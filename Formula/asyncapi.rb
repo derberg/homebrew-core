@@ -1,6 +1,6 @@
 require "language/node"
 
-class AsyncapiCli < Formula
+class Asyncapi < Formula
   desc "All in one CLI for all AsyncAPI tools"
   homepage "https://github.com/asyncapi/cli"
   url "https://registry.npmjs.org/@asyncapi/cli/-/cli-0.11.2.tgz"
