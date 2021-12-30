@@ -7,10 +7,6 @@ class Asyncapi < Formula
   sha256 "75e4d0e73f0ea8693ccfa684c3fd5ca26cab4f4a634c9064b90520093df882bc"
   license "Apache-2.0"
 
-  livecheck do
-    url :stable
-  end
-
   depends_on "node"
 
   def install
