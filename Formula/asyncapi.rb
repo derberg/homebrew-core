@@ -10,8 +10,10 @@ class Asyncapi < Formula
   depends_on "node"
 
   def install
+    inreplace "package.json", "postpack", "postpack_disabled"
     system "npm", "install", *Language::Node.std_npm_install_args(libexec)
     bin.install_symlink Dir["#{libexec}/bin/*"]
+    rm libexec/"lib/node_modules/@asyncapi/cli/oclif.manifest.json"
   end
 
   test do
