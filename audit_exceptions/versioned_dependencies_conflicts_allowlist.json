@@ -1,12 +1,6 @@
 [
-  "anjuta",
-  "coin3d",
-  "gjs",
   "hive",
-  "mpv",
-  "predictionio",
-  "pyside",
-  "pyside@2",
-  "sqoop",
-  "watchman"
+  "mariadb@10.4",
+  "mysql@5.7",
+  "sslyze"
 ]

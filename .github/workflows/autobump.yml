@@ -1,211 +1,66 @@
 name: Bump formulae on schedule or request
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/autobump.yml
   workflow_dispatch:
     inputs:
       formulae:
         description: Custom list of formulae to livecheck and bump if outdated
         required: false
   schedule:
-    # Every day at 5am
-    - cron: '0 5 * * *'
+    # Every 3 hours from 1 through 23 with an offset of 45 minutes
+    - cron: "45 1-23/3 * * *"
 
-env:
-  HOMEBREW_FORCE_HOMEBREW_ON_LINUX: 1
-  FORMULAE: |
-    ack
-    angular-cli
-    apache-archiva
-    apidoc
-    argo
-    artifactory
-    atuin
-    autorest
-    aws-cdk
-    b3sum
-    bcoin
-    bottom
-    broot
-    buildkit
-    bundletool
-    cadence
-    calicoctl
-    cargo-audit
-    cargo-bloat
-    cargo-c
-    cargo-edit
-    cargo-instruments
-    cargo-llvm-lines
-    cargo-outdated
-    cargo-watch
-    cdk8s
-    chezmoi
-    chromaprint
-    circleci
-    clair
-    cliclick
-    cloudflare-wrangler
-    composer
-    consul
-    consul-template
-    crun
-    cubejs-cli
-    deno
-    detekt
-    detox
-    devspace
-    dnscrypt-proxy
-    docker
-    docker-compose
-    docker-slim
-    doctl
-    docuum
-    double-conversion
-    dprint
-    dvc
-    envconsul
-    esbuild
-    eslint
-    etcd
-    ethereum
-    exploitdb
-    fennel
-    firebase-cli
-    flarectl
-    flux
-    fuse-overlayfs
-    futhark
-    gatsby-cli
-    git-cliff
-    git-delta
-    gitleaks
-    gleam
-    glooctl
-    gofish
-    golang-migrate
-    goreleaser
-    gosec
-    gostatic
-    gpg-tui
-    hcloud
-    helm
-    helmfile
-    htmldoc
-    hugo
-    imagemagick
-    imagemagick@6
-    imap-backup
-    ircd-hybrid
-    jenkins
-    jfrog-cli
-    jql
-    jsonnet
-    just
-    k3d
-    k9s
-    keptn
-    keydb
-    kubeaudit
-    kubecfg
-    kumactl
-    kustomize
-    lazydocker
-    lexbor
-    liboqs
-    localstack
-    lout
-    macchina
-    marked
-    marp-cli
-    mdbook
-    mdcat
-    meson
-    metabase
-    micro
-    minikube
-    mmctl
-    moto
-    murex
-    mypy
-    nativefier
-    navi
-    ncc
-    neofetch
-    netlify-cli
-    nfpm
-    nng
-    node-sass
-    nomad
-    notcurses
-    nushell
-    oauth2_proxy
-    oci-cli
-    octant
-    okteto
-    opensearch
-    oxipng
-    pickle
-    pnpm
-    pocsuite3
-    procs
-    protoc-gen-go-grpc
-    rbw
-    rollup
-    s2n
-    selene
-    serverless
-    skaffold
-    skopeo
-    solana
-    sponge
-    starship
-    stdman
-    stress-ng
-    svgo
-    svtplay-dl
-    syncthing
-    teleport
-    termshark
-    terraform-ls
-    toast
-    topgrade
-    traefik
-    vale
-    vault-cli
-    vercel-cli
-    virgil
-    vite
-    vpn-slice
-    vsearch
-    vue-cli
-    wasmtime
-    webpack
-    webtorrent-cli
-    whistle
-    xcbeautify
-    xplr
-    yaegi
-    zellij
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -xeuo pipefail {0}
 
 jobs:
   autobump:
-    if: github.repository == 'Homebrew/homebrew-core'
+    if: github.repository_owner == 'Homebrew'
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/homebrew/ubuntu16.04:master
+      image: ghcr.io/homebrew/ubuntu22.04:master
+    env:
+      GNUPGHOME: /tmp/gnupghome
     steps:
       - name: Set up Homebrew
         id: set-up-homebrew
         uses: Homebrew/actions/setup-homebrew@master
+        with:
+          core: true
+          cask: false
+          test-bot: false
 
       - name: Configure Git user
         uses: Homebrew/actions/git-user-config@master
         with:
           username: ${{ (github.event_name == 'workflow_dispatch' && github.actor) || 'BrewTestBot' }}
 
-      - name: Bump formulae
-        uses: Homebrew/actions/bump-formulae@master
-        continue-on-error: true
+      - name: Set up commit signing
+        uses: Homebrew/actions/setup-commit-signing@master
         with:
-          token: ${{ secrets.HOMEBREW_CORE_REPO_WORKFLOW_TOKEN }}
-          formulae: ${{ github.event.inputs.formulae || env.FORMULAE }}
+          signing_key: ${{ secrets.BREWTESTBOT_GPG_SIGNING_SUBKEY }}
+
+      - name: Bump formulae
+        env:
+          HOMEBREW_TEST_BOT_AUTOBUMP: 1
+          HOMEBREW_GITHUB_API_TOKEN: ${{ secrets.HOMEBREW_CORE_REPO_WORKFLOW_TOKEN }}
+          HOMEBREW_GIT_COMMITTER_NAME: BrewTestBot
+          HOMEBREW_GIT_COMMITTER_EMAIL: 1589480+BrewTestBot@users.noreply.github.com
+          HOMEBREW_GPG_PASSPHRASE: ${{ secrets.BREWTESTBOT_GPG_SIGNING_SUBKEY_PASSPHRASE }}
+          FORMULAE: ${{ inputs.formulae }}
+        run: |
+          BREW_BUMP=(brew bump --no-fork --open-pr --formulae)
+          if [[ -n "${FORMULAE-}" ]]; then
+            xargs "${BREW_BUMP[@]}" <<<"${FORMULAE}"
+          else
+            "${BREW_BUMP[@]}" --auto --tap=Homebrew/core
+          fi
